@@ -9,22 +9,22 @@
 #include	<jsoncpp/json/reader.h>
 #include	<jsoncpp/json/writer.h>
 #include 	<fstream>
-  
+
 bool        debug = false, flagPxlFmt = false;
 
 int			enableThrX = 0, enableDist = 0; 
-int         suspend = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, format = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int         suspend = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		maxConv = 3;
 
 cv::Size    fs = cv::Size(640, 480);
 cv::Mat 	cameraMatrix = cv::Mat::eye(3, 3, CV_64F), distCoeffs = cv::Mat::zeros(8, 1, CV_64F);
 cv::ColorConversionCodes codeColor = cv::COLOR_BGR2YUV;
 
-std::string formatParse (int format) 
+std::string formatParse (int pxlFormat) 
 {
 	std::string r ; 
-	uchar depth = format & CV_MAT_DEPTH_MASK;
-	uchar chans = 1 + (format >> CV_CN_SHIFT);
+	uchar depth = pxlFormat & CV_MAT_DEPTH_MASK;
+	uchar chans = 1 + (pxlFormat >> CV_CN_SHIFT);
 	
 	switch (depth) {
 		case CV_8U: 	r = "8U";break;
@@ -87,10 +87,10 @@ int     main(int ac, char **av)
 		calibrationFilePath = std::string(currentPath) + "/" + av[1];
 		
 		file.open(calibrationFilePath, cv::FileStorage::READ); 
-		std::cout << "open calibration file in \"" << calibrationFilePath << "\" ..."<<std::endl;
+		std::cout << "\nopen calibration file in <" << calibrationFilePath << "> ..."<<std::endl;
 	} else {
 		file.open("calibration.json", cv::FileStorage::READ);
-		std::cout << "open calibration file \"calibration.json\" in current path ..." << std::endl;
+		std::cout << "\nopen calibration file <calibration.json> in current path ..." << std::endl;
 	}
     if (!file.isOpened())
     {
@@ -142,7 +142,7 @@ int     main(int ac, char **av)
     cv::createTrackbar("maxThreshold", "IN/OUT frame", &sMax, 255);	
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
-	cv::resizeWindow("parameters",250, fs.height*2);
+	cv::resizeWindow("parameters",200, fs.height*2);
 
 	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
     cv::createTrackbar("brightness", "parameters", &brightness, 128);
@@ -151,7 +151,7 @@ int     main(int ac, char **av)
     cv::createTrackbar("hue", "parameters", &hue, 4000);
 //    cv::createTrackbar("gamma", "parameters", &gamma_camera, 200);
     cv::createTrackbar("gain", "parameters", &gain, 100);
-	cv::createTrackbar("Format", "parameters", &format, 1, callBckFmt);    
+	cv::createTrackbar("pxlFormat", "parameters", &pxlFormat, 1, callBckFmt);    
 	cv::createTrackbar("enable distortion", "parameters", &enableDist, 1);    
     cv::createTrackbar("scale", "parameters", &scale, 100);
 
@@ -163,9 +163,9 @@ int     main(int ac, char **av)
 	
 	int fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
 	char fmtChar[] = {(char)(fmt & 0XFF), (char)((fmt & 0XFF00) >> 8), (char)((fmt & 0XFF0000) >> 16), (char)((fmt & 0XFF000000) >> 24), 0};
-	std::cout << "default piexl foramt: " << fmtChar << std::endl;
+	std::cout << "\ndefault piexl foramt: " << fmtChar << std::endl;
 	std::cout << "frame size: [" << camera.get(cv::CAP_PROP_FRAME_WIDTH) << "X" << camera.get(cv::CAP_PROP_FRAME_HEIGHT) << "]"<< std::endl;
-	std::cout << "matrix format: " << formatParse(camera.get(cv::CAP_PROP_FORMAT)) << std::endl;
+	std::cout << "pxlFormat: " << formatParse(camera.get(cv::CAP_PROP_FORMAT)) << std::endl;
 
     while (true)
     {	
@@ -180,7 +180,7 @@ int     main(int ac, char **av)
 		camera.set(cv::CAP_PROP_GAIN, gain / 100.0);
 //		camera.set(cv::CAP_PROP_GAMMA, gamma_camera / 200.0);
 		if (flagPxlFmt == true) {		
-			switch (format) {
+			switch (pxlFormat) {
 			case 0:		camera.set(cv::CAP_PROP_FOURCC,CV_FOURCC('M','J','P','G'));
 						fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
 						std::cout << "pixel format: "<< (char)(fmt & 0XFF) << (char)((fmt & 0XFF00) >> 8) << (char)((fmt & 0XFF0000) >> 16) << (char)((fmt & 0XFF000000) >> 24) << std::endl;
@@ -290,7 +290,7 @@ int     main(int ac, char **av)
 		}
 		
 		cv::vconcat(imgRes, imgResConv, imgRes);
-
+	
 	    cv::imshow("IN/OUT frame", imgRes);			
         cv::waitKey(1);
 	} 
