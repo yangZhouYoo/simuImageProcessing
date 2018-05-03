@@ -129,7 +129,7 @@ int     main(int ac, char **av)
 //    cv::namedWindow("IN/OUT frame");
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
-	cv::resizeWindow("IN/OUT frame",fs.width*2, fs.height*2);
+	cv::resizeWindow("IN/OUT frame",fs.width*2.5, fs.height*2);
 	cv::createTrackbar("conv", "IN/OUT frame", &conv, maxConv, callBckConvMode);
     cv::createTrackbar("suspend", "IN/OUT frame", &suspend, 1);
 	cv::createTrackbar("enable thresh", "IN/OUT frame", &enableThrX, 6);
@@ -137,7 +137,7 @@ int     main(int ac, char **av)
     cv::createTrackbar("maxThreshold", "IN/OUT frame", &sMax, 255);	
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
-	cv::resizeWindow("parameters",fs.width/2, fs.height*2);
+	cv::resizeWindow("parameters",250, fs.height*2);
 
 	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
     cv::createTrackbar("brightness", "parameters", &brightness, 128);
