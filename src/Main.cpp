@@ -12,8 +12,10 @@
   
 bool        debug = false, flagPxlFmt = false;
 
-int         suspend = 0, conv = 0, scale = 60, enableThrX = 0, sMin = 150, sMax = 256, format = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int			enableThrX = 0, enableDist = 0; 
+int         suspend = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, format = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		maxConv = 3;
+
 cv::Size    fs = cv::Size(640, 480);
 cv::Mat 	cameraMatrix = cv::Mat::eye(3, 3, CV_64F), distCoeffs = cv::Mat::zeros(8, 1, CV_64F);
 cv::ColorConversionCodes codeColor = cv::COLOR_BGR2YUV;
@@ -114,8 +116,8 @@ int     main(int ac, char **av)
 
     file.release();    
 	
-    std::cout << "Camera matrix: " << std::endl << cameraMatrix << std::endl;
-    std::cout << "Distortion coeffs: \n" << distCoeffs << std::endl;
+//    std::cout << "Camera matrix: " << std::endl << cameraMatrix << std::endl;
+//    std::cout << "Distortion coeffs: \n" << distCoeffs << std::endl;
 
     R = cv::Mat::eye(3, 3, CV_64F);	
     newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0f, cv::Size(640, 480), 0, true);
@@ -136,7 +138,6 @@ int     main(int ac, char **av)
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
 	cv::resizeWindow("parameters",fs.width/2, fs.height*2);
-	//    cv::createTrackbar("free_scale", "setting", &scale, 100);
 
 	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
     cv::createTrackbar("brightness", "parameters", &brightness, 128);
@@ -146,6 +147,8 @@ int     main(int ac, char **av)
 //    cv::createTrackbar("gamma", "parameters", &gamma_camera, 200);
     cv::createTrackbar("gain", "parameters", &gain, 100);
 	cv::createTrackbar("Format", "parameters", &format, 1, callBckFmt);    
+	cv::createTrackbar("enable distortion", "parameters", &enableDist, 1);    
+    cv::createTrackbar("scale", "parameters", &scale, 100);
 
 //command linuxg4v for camera setting : v4l2-ctl -d /dev/video1 --list-ctrls
 	camera.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
@@ -185,7 +188,17 @@ int     main(int ac, char **av)
 			}
 		}
 		flagPxlFmt = false;
-		camera.read(img);		 
+		camera.read(img);	
+
+		if (enableDist == 1) {	
+			newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0, cv::Size(640, 480), 0, true);
+		    cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
+			cv::remap(img, img, map1, map2, cv::INTER_LINEAR);
+		}
+
+		cv::hconcat(imgChx, imgUndist, imgRes);
+		cv::hconcat(imgChx, imgUndist, imgRes);
+	 
 //convert image 	
 		cv::cvtColor(img, imgConv, codeColor);			
 		
@@ -230,16 +243,6 @@ int     main(int ac, char **av)
 			cv::hconcat(channels[0], channels[1], imgRes);
 			cv::hconcat(imgRes, channels[2], imgRes);
 		}
-/*
-		imgChx = channels[nCh];
-		cv::threshold(imgChx, imgBinairy, sMin, sMax, CV_THRESH_BINARY);
-		newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0f, cv::Size(640, 480), 0, true);
-        cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
-		cv::remap(imgBinairy, imgUndist, map1, map2, cv::INTER_LINEAR);
-
-		cv::hconcat(imgChx, imgUndist, imgRes);
-		cv::hconcat(imgChx, imgUndist, imgRes);
-*/
 
 		cv::split(imgConv, channelsConv);
 		
