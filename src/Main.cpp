@@ -75,23 +75,28 @@ int     main(int ac, char **av)
 	cv::Mat 	channels[3],channelsConv[3];
 	
 	cv::FileStorage file;
-    char    	currentPath[256];
-    std::string     calibrationFilePath;
+	if (ac > 1) {
+		char    	currentPath[256];
+		std::string     calibrationFilePath;
 
-	if (getcwd(currentPath, 256 * sizeof(char)) == NULL)
-		{
-		    std::cerr << "Could not retrieve current path directory." << std::endl;
-		    return (EXIT_FAILURE);
-		}
-    calibrationFilePath = std::string(currentPath) + "/" + av[1];
-	
-    file.open(calibrationFilePath, cv::FileStorage::READ);
+		if (getcwd(currentPath, 256 * sizeof(char)) == NULL)
+			{
+				std::cerr << "Could not retrieve current path directory." << std::endl;
+				return (EXIT_FAILURE);
+			}
+		calibrationFilePath = std::string(currentPath) + "/" + av[1];
+		
+		file.open(calibrationFilePath, cv::FileStorage::READ); 
+		std::cout << "open calibration file in \"" << calibrationFilePath << "\" ..."<<std::endl;
+	} else {
+		file.open("calibration.json", cv::FileStorage::READ);
+		std::cout << "open calibration file \"calibration.json\" in current path ..." << std::endl;
+	}
     if (!file.isOpened())
     {
         std::cerr << "Could not open calibration file '" << av[1] << "'" << std::endl;
         return (EXIT_FAILURE);
     }
-
 
     cameraMatrix.at<double>(0, 0) = file["distortion"]["fx"];
     cameraMatrix.at<double>(0, 1) = 0;
@@ -124,7 +129,7 @@ int     main(int ac, char **av)
     cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
 	
 	cv::VideoCapture camera;
-    camera.open(ac == 2 ? 0 : std::stoi(av[2]));
+    camera.open(ac == 3 ? std::stoi(av[2]) : 0);
 
 //    cv::namedWindow("IN/OUT frame");
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
