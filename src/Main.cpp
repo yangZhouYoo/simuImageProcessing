@@ -12,8 +12,10 @@
 
 bool        debug = false, flagPxlFmt = false;
 
-int			enableThrX = 0, enableDist = 0; 
+int			enableThr = 0, enableThrX = 0, enableDist = 0; 
 int         suspend = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
+int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
 int 		maxConv = 3;
 
 cv::Size    fs = cv::Size(640, 480);
@@ -66,9 +68,7 @@ int     main(int ac, char **av)
 	double 		ss = 32.2, rms;
 	size_t 		success = 0;
 	int         wn = 9, hn = 6;	
-	int 		caseFlag = 0, caseFlagConv = 0;
-	int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
-	int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};		
+	int 		caseFlag = 0, caseFlagConv = 0;		
 
 	cv::Mat 	img, imgConv, imgChx, imgChxCov, imgUndist, imgRes, imgResConv;
 	cv::Mat		finImg, finImgConv;
@@ -139,9 +139,6 @@ int     main(int ac, char **av)
 	cv::resizeWindow("IN/OUT frame",fs.width*2.5, fs.height*2);
 	cv::createTrackbar("conv", "IN/OUT frame", &conv, maxConv, callBckConvMode);
     cv::createTrackbar("suspend", "IN/OUT frame", &suspend, 1);
-	cv::createTrackbar("enable thresh", "IN/OUT frame", &enableThrX, 6);
-    cv::createTrackbar("minThreshold", "IN/OUT frame", &sMin, 255);
-    cv::createTrackbar("maxThreshold", "IN/OUT frame", &sMax, 255);	
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
 	cv::resizeWindow("parameters",200, fs.height*2);
@@ -156,6 +153,25 @@ int     main(int ac, char **av)
 	cv::createTrackbar("pxlFormat", "parameters", &pxlFormat, 1, callBckFmt);    
 	cv::createTrackbar("enable distortion", "parameters", &enableDist, 1);    
     cv::createTrackbar("scale", "parameters", &scale, 100);
+
+	cv::namedWindow("threshold",cv::WINDOW_NORMAL);
+	cv::resizeWindow("threshold",200, fs.height*2);
+	cv::createTrackbar("enable threshold", "threshold", &enableThr, 1);
+    cv::createTrackbar("thrMin1", "threshold", &tmpSMin[0], 255);
+	cv::createTrackbar("thrMax1", "threshold", &tmpSMax[0], 255);
+    cv::createTrackbar("thrMin2", "threshold", &tmpSMin[1], 255);
+	cv::createTrackbar("thrMax2", "threshold", &tmpSMax[1], 255);
+    cv::createTrackbar("thrMin3", "threshold", &tmpSMin[2], 255);
+	cv::createTrackbar("thrMax3", "threshold", &tmpSMax[2], 255);
+    cv::createTrackbar("thrMin4", "threshold", &tmpSMin[3], 255);
+	cv::createTrackbar("thrMax4", "threshold", &tmpSMax[3], 255);
+    cv::createTrackbar("thrMin5", "threshold", &tmpSMin[4], 255);
+	cv::createTrackbar("thrMax5", "threshold", &tmpSMax[4], 255);
+    cv::createTrackbar("thrMin6", "threshold", &tmpSMin[5], 255);
+	cv::createTrackbar("thrMax6", "threshold", &tmpSMax[5], 255);
+	cv::createTrackbar("enable thr n", "threshold", &enableThrX, 6);
+    cv::createTrackbar("minThreshold", "threshold", &sMin, 255);
+    cv::createTrackbar("maxThreshold", "threshold", &sMax, 255);	
 
 //command linuxg4v for camera setting : v4l2-ctl -d /dev/video1 --list-ctrls
 	camera.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
@@ -210,7 +226,7 @@ int     main(int ac, char **av)
 		cv::cvtColor(img, imgConv, codeColor);			
 		
 		cv::split(img, channels);
-		if (enableThrX != 0) {	
+		if (enableThrX != 0 && enableThr == 0) {	
 			switch (enableThrX) {
 				case 1 : 		caseFlag = caseFlag | 0b001; 
 								tmpSMin[0] = sMin; 
@@ -243,6 +259,17 @@ int     main(int ac, char **av)
 			cv::hconcat(imgRes, channels[2], imgRes);			
 		} else {	
 			caseFlag = 0; 	
+		}
+
+		if (enableThr != 0) {	
+			cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
+			cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
+			cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);				
+			cv::hconcat(channels[0], channels[1], imgRes);
+			cv::hconcat(imgRes, channels[2], imgRes);			
+		} 
+
+		if (enableThrX == 0 && enableThr == 0) {		
 			cv::split(img, channels);
 //convert image 	
 			cv::cvtColor(img, imgConv, codeColor);
@@ -251,9 +278,10 @@ int     main(int ac, char **av)
 			cv::hconcat(imgRes, channels[2], imgRes);
 		}
 
-		cv::split(imgConv, channelsConv);
-		
-		if (enableThrX != 0) {
+
+
+		cv::split(imgConv, channelsConv);		
+		if (enableThrX != 0 && enableThr == 0) {
 			switch (enableThrX) {
 				case 4 : 		caseFlagConv = caseFlagConv | 0b001; 
 								tmpSMin[3] = sMin; 
@@ -285,7 +313,17 @@ int     main(int ac, char **av)
 			cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
 			cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
 		} else {
-			caseFlagConv = 0; 	
+			caseFlagConv = 0;
+		}
+
+		if (enableThr != 0) {
+			cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
+			cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
+			cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);						
+			cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
+			cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
+		} 
+		if (enableThrX == 0 && enableThr == 0) {
 			cv::split(imgConv, channelsConv);		
 			cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
 			cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
