@@ -71,8 +71,10 @@ int     main(int ac, char **av)
 	int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};		
 
 	cv::Mat 	img, imgConv, imgChx, imgChxCov, imgUndist, imgRes, imgResConv;
+	cv::Mat		finImg, finImgConv;
     cv::Mat 	R, map1, map2, newCameraMatrix;
 	cv::Mat 	channels[3],channelsConv[3];
+	std::vector<cv::Mat> channelsMerged, channelsConvMerged;
 	
 	cv::FileStorage file;
 	if (ac > 1) {
@@ -290,7 +292,27 @@ int     main(int ac, char **av)
 		}
 		
 		cv::vconcat(imgRes, imgResConv, imgRes);
-	
+
+		cv::cvtColor(imgRes, imgRes, cv::COLOR_GRAY2BGR);
+		
+		channelsMerged.clear();
+		channelsMerged.push_back(channels[0]);
+		channelsMerged.push_back(channels[1]);
+		channelsMerged.push_back(channels[2]);		
+		cv::merge(channelsMerged,finImg);		
+		
+		channelsConvMerged.clear();
+		channelsConvMerged.push_back(channelsConv[0]);
+		channelsConvMerged.push_back(channelsConv[1]);
+		channelsConvMerged.push_back(channelsConv[2]);		
+		cv::merge(channelsConvMerged,finImgConv);
+
+		cv::vconcat(img, imgConv, img);		
+		cv::hconcat(img, imgRes, imgRes);
+
+		cv::vconcat(finImg, finImgConv, finImg);		
+		cv::hconcat(imgRes, finImg, imgRes);
+
 	    cv::imshow("IN/OUT frame", imgRes);			
         cv::waitKey(1);
 	} 
@@ -303,7 +325,7 @@ int     main(int ac, char **av)
 
 
 
-
+	
 /*
 	std::ofstream fCalib;
 	Json::Value event;   
