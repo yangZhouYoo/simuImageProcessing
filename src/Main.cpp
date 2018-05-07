@@ -136,12 +136,12 @@ int     main(int ac, char **av)
 //    cv::namedWindow("IN/OUT frame");
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
-	cv::resizeWindow("IN/OUT frame",fs.width*2.5, fs.height*2);
+	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
 	cv::createTrackbar("conv", "IN/OUT frame", &conv, maxConv, callBckConvMode);
     cv::createTrackbar("suspend", "IN/OUT frame", &suspend, 1);
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
-	cv::resizeWindow("parameters",200, fs.height*2);
+	cv::resizeWindow("parameters",200, fs.height*1.5);
 
 	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
     cv::createTrackbar("brightness", "parameters", &brightness, 128);
@@ -155,7 +155,7 @@ int     main(int ac, char **av)
     cv::createTrackbar("scale", "parameters", &scale, 100);
 
 	cv::namedWindow("threshold",cv::WINDOW_NORMAL);
-	cv::resizeWindow("threshold",200, fs.height*2);
+	cv::resizeWindow("threshold",200, fs.height*1.5);
 	cv::createTrackbar("enable threshold", "threshold", &enableThr, 1);
     cv::createTrackbar("thrMin1", "threshold", &tmpSMin[0], 255);
 	cv::createTrackbar("thrMax1", "threshold", &tmpSMax[0], 255);
@@ -345,12 +345,24 @@ int     main(int ac, char **av)
 		channelsConvMerged.push_back(channelsConv[2]);		
 		cv::merge(channelsConvMerged,finImgConv);
 
+/*		
+		cv::resize(img, img, cv::Size(fs.width*1.5, fs.height*1.5));
+		cv::resize(imgConv, imgConv, cv::Size(fs.width*1.5, fs.height*1.5));
 		cv::vconcat(img, imgConv, img);		
-		cv::hconcat(img, imgRes, imgRes);
-
+		
+		cv::resize(finImg, finImg, cv::Size(fs.width*1.5, fs.height*1.5));
+		cv::resize(finImgConv, finImgConv, cv::Size(fs.width*1.5, fs.height*1.5));
 		cv::vconcat(finImg, finImgConv, finImg);		
-		cv::hconcat(imgRes, finImg, imgRes);
 
+		cv::hconcat(img, finImg, finImg);
+	
+		cv::vconcat(finImg, imgRes, imgRes);
+*/
+		cv::vconcat(img, imgConv, img);
+		cv::vconcat(finImg, finImgConv, finImg);		
+		cv::hconcat(img, imgRes, imgRes);		
+		cv::hconcat(imgRes, finImg, imgRes);
+	
 	    cv::imshow("IN/OUT frame", imgRes);			
         cv::waitKey(1);
 	} 
