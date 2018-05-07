@@ -88,11 +88,11 @@ int     main(int ac, char **av)
 			}
 		calibrationFilePath = std::string(currentPath) + "/" + av[1];
 		
-		file.open(calibrationFilePath, cv::FileStorage::READ); 
-		std::cout << "\nopen calibration file in <" << calibrationFilePath << "> ..."<<std::endl;
+		if (file.open(calibrationFilePath, cv::FileStorage::READ)) 
+		std::cout << "\n<config> calibration file in \"" << calibrationFilePath << "\" opened"<<std::endl;
 	} else {
-		file.open("calibration.json", cv::FileStorage::READ);
-		std::cout << "\nopen calibration file <calibration.json> in current path ..." << std::endl;
+		if (file.open("calibration.json", cv::FileStorage::READ)) 
+		std::cout << "\n<config> calibration file \"calibration.json\" in current path opened" << std::endl;
 	}
     if (!file.isOpened())
     {
@@ -131,8 +131,14 @@ int     main(int ac, char **av)
     cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
 	
 	cv::VideoCapture camera;
-    camera.open(ac == 3 ? std::stoi(av[2]) : 0);
-
+//	camera.open(ac == 3 ? std::stoi(av[2]) : 0);
+	if (ac == 3) 
+	{
+		if (camera.open(std::stoi(av[2]))) std::cout << "<config> camera dev video" << av[2] << " opened" << std::endl;
+	} else {
+		if (camera.open("/dev/ELP-USB130W01MT-L21")) std::cout << "<config> camera ELP-USB130W01MT-L21 opened " << std::endl;
+	}	
+    
 //    cv::namedWindow("IN/OUT frame");
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
