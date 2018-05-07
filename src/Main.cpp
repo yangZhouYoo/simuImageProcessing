@@ -12,6 +12,8 @@
 
 bool        debug = false, flagPxlFmt = false;
 
+//	std::system( "xdotool mousemove 300 400" );
+
 int			enableThr = 0, enableThrX = 0, enableDist = 0; 
 int         suspend = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
@@ -143,7 +145,7 @@ int     main(int ac, char **av)
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
 	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
-	cv::createTrackbar("conv", "IN/OUT frame", &conv, maxConv, callBckConvMode);
+	cv::createTrackbar("color space", "IN/OUT frame", &conv, maxConv, callBckConvMode);
     cv::createTrackbar("suspend", "IN/OUT frame", &suspend, 1);
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
@@ -195,185 +197,186 @@ int     main(int ac, char **av)
     {	
 		if (!suspend) {
 
-//set camera parameters
-		camera.set(cv::CAP_PROP_EXPOSURE, (exposure + 1) / 5000.0);
-		camera.set(cv::CAP_PROP_BRIGHTNESS, brightness / 128.0);
-		camera.set(cv::CAP_PROP_CONTRAST, contrast / 95.0);
-		camera.set(cv::CAP_PROP_SATURATION, saturation / 128.0);
-		camera.set(cv::CAP_PROP_HUE, hue / 4000.0);
-		camera.set(cv::CAP_PROP_GAIN, gain / 100.0);
-//		camera.set(cv::CAP_PROP_GAMMA, gamma_camera / 200.0);
-		if (flagPxlFmt == true) {		
-			switch (pxlFormat) {
-			case 0:		camera.set(cv::CAP_PROP_FOURCC,CV_FOURCC('M','J','P','G'));
-						fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
-						std::cout << "pixel format: "<< (char)(fmt & 0XFF) << (char)((fmt & 0XFF00) >> 8) << (char)((fmt & 0XFF0000) >> 16) << (char)((fmt & 0XFF000000) >> 24) << std::endl;
-						break;
-			case 1: 	camera.set(cv::CAP_PROP_FOURCC,CV_FOURCC('Y','U','Y','V'));
-						fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
-						std::cout << "pixel format: "<< (char)(fmt & 0XFF) << (char)((fmt & 0XFF00) >> 8) << (char)((fmt & 0XFF0000) >> 16) << (char)((fmt & 0XFF000000) >> 24) << std::endl;
-						break;
-			//default:	break;		
+	//set camera parameters
+			camera.set(cv::CAP_PROP_EXPOSURE, (exposure + 1) / 5000.0);
+			camera.set(cv::CAP_PROP_BRIGHTNESS, brightness / 128.0);
+			camera.set(cv::CAP_PROP_CONTRAST, contrast / 95.0);
+			camera.set(cv::CAP_PROP_SATURATION, saturation / 128.0);
+			camera.set(cv::CAP_PROP_HUE, hue / 4000.0);
+			camera.set(cv::CAP_PROP_GAIN, gain / 100.0);
+	//		camera.set(cv::CAP_PROP_GAMMA, gamma_camera / 200.0);
+			if (flagPxlFmt == true) {		
+				switch (pxlFormat) {
+				case 0:		camera.set(cv::CAP_PROP_FOURCC,CV_FOURCC('M','J','P','G'));
+							fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
+							std::cout << "pixel format: "<< (char)(fmt & 0XFF) << (char)((fmt & 0XFF00) >> 8) << (char)((fmt & 0XFF0000) >> 16) << (char)((fmt & 0XFF000000) >> 24) << std::endl;
+							break;
+				case 1: 	camera.set(cv::CAP_PROP_FOURCC,CV_FOURCC('Y','U','Y','V'));
+							fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
+							std::cout << "pixel format: "<< (char)(fmt & 0XFF) << (char)((fmt & 0XFF00) >> 8) << (char)((fmt & 0XFF0000) >> 16) << (char)((fmt & 0XFF000000) >> 24) << std::endl;
+							break;
+				//default:	break;		
+				}
 			}
-		}
-		flagPxlFmt = false;
-		camera.read(img);	
+			flagPxlFmt = false;
+			camera.read(img);	
 
-		if (enableDist == 1) {	
-			newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0, cv::Size(640, 480), 0, true);
-		    cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
-			cv::remap(img, img, map1, map2, cv::INTER_LINEAR);
-		}
+			if (enableDist == 1) {	
+				newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0, cv::Size(640, 480), 0, true);
+				cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
+				cv::remap(img, img, map1, map2, cv::INTER_LINEAR);
+			}
 
-		cv::hconcat(imgChx, imgUndist, imgRes);
-		cv::hconcat(imgChx, imgUndist, imgRes);
-	 
-//convert image 	
-		cv::cvtColor(img, imgConv, codeColor);			
+			cv::hconcat(imgChx, imgUndist, imgRes);
+			cv::hconcat(imgChx, imgUndist, imgRes);
+		 
+	//convert image 	
+			cv::cvtColor(img, imgConv, codeColor);			
 		
-		cv::split(img, channels);
-		if (enableThrX != 0 && enableThr == 0) {	
-			switch (enableThrX) {
-				case 1 : 		caseFlag = caseFlag | 0b001; 
-								tmpSMin[0] = sMin; 
-								tmpSMax[0] = sMax; 
-								break;
-				case 2 : 		caseFlag = caseFlag | 0b010;  
-								tmpSMin[1] = sMin; 
-								tmpSMax[1] = sMax; 
-								break;
-				case 3 : 		caseFlag = caseFlag | 0b100;  
-								tmpSMin[2] = sMin; 
-								tmpSMax[2] = sMax; 
-								break;
-			}
-			switch (caseFlag) {
-				case 0b001 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);break;			
-				case 0b010 :	cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);break;
-				case 0b100 :	cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;
-				case 0b011 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
-								cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);break;
-				case 0b101 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
-								cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;
-				case 0b110 :	cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
-								cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;
-				case 0b111 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
-								cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
-								cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;				
-			}
-			cv::hconcat(channels[0], channels[1], imgRes);
-			cv::hconcat(imgRes, channels[2], imgRes);			
-		} else {	
-			caseFlag = 0; 	
-		}
-
-		if (enableThr != 0) {	
-			cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
-			cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
-			cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);				
-			cv::hconcat(channels[0], channels[1], imgRes);
-			cv::hconcat(imgRes, channels[2], imgRes);			
-		} 
-
-		if (enableThrX == 0 && enableThr == 0) {		
 			cv::split(img, channels);
-//convert image 	
-			cv::cvtColor(img, imgConv, codeColor);
-
-			cv::hconcat(channels[0], channels[1], imgRes);
-			cv::hconcat(imgRes, channels[2], imgRes);
-		}
-
-
-
-		cv::split(imgConv, channelsConv);		
-		if (enableThrX != 0 && enableThr == 0) {
-			switch (enableThrX) {
-				case 4 : 		caseFlagConv = caseFlagConv | 0b001; 
-								tmpSMin[3] = sMin; 
-								tmpSMax[3] = sMax; 
-								break;
-				case 5 : 		caseFlagConv = caseFlagConv | 0b010;  
-								tmpSMin[4] = sMin; 
-								tmpSMax[4] = sMax; 
-								break;
-				case 6 : 		caseFlagConv = caseFlagConv | 0b100;  
-								tmpSMin[5] = sMin; 
-								tmpSMax[5] = sMax; 
-								break;
+			if (enableThrX != 0 && enableThr == 0) {	
+				switch (enableThrX) {
+					case 1 : 		caseFlag = caseFlag | 0b001; 
+									tmpSMin[0] = sMin; 
+									tmpSMax[0] = sMax; 
+									break;
+					case 2 : 		caseFlag = caseFlag | 0b010;  
+									tmpSMin[1] = sMin; 
+									tmpSMax[1] = sMax; 
+									break;
+					case 3 : 		caseFlag = caseFlag | 0b100;  
+									tmpSMin[2] = sMin; 
+									tmpSMax[2] = sMax; 
+									break;
+				}
+				switch (caseFlag) {
+					case 0b001 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);break;			
+					case 0b010 :	cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);break;
+					case 0b100 :	cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;
+					case 0b011 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
+									cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);break;
+					case 0b101 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
+									cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;
+					case 0b110 :	cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
+									cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;
+					case 0b111 :	cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
+									cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
+									cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);break;				
+				}
+				cv::hconcat(channels[0], channels[1], imgRes);
+				cv::hconcat(imgRes, channels[2], imgRes);			
+			} else {	
+				caseFlag = 0; 	
 			}
-			switch (caseFlagConv) {
-				case 0b001 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);break;			
-				case 0b010 :	cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);break;
-				case 0b100 :	cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;
-				case 0b011 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
-								cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);break;
-				case 0b101 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
-								cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;
-				case 0b110 :	cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
-								cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;
-				case 0b111 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
-								cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
-								cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;				
-			}
-			cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
-			cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
-		} else {
-			caseFlagConv = 0;
-		}
 
-		if (enableThr != 0) {
-			cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
-			cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
-			cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);						
-			cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
-			cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
-		} 
-		if (enableThrX == 0 && enableThr == 0) {
+			if (enableThr != 0) {	
+				cv::threshold(channels[0], channels[0], tmpSMin[0], tmpSMax[0], CV_THRESH_BINARY);
+				cv::threshold(channels[1], channels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);
+				cv::threshold(channels[2], channels[2], tmpSMin[2], tmpSMax[2], CV_THRESH_BINARY);				
+				cv::hconcat(channels[0], channels[1], imgRes);
+				cv::hconcat(imgRes, channels[2], imgRes);			
+			} 
+
+			if (enableThrX == 0 && enableThr == 0) {		
+				cv::split(img, channels);
+	//convert image 	
+				cv::cvtColor(img, imgConv, codeColor);
+
+				cv::hconcat(channels[0], channels[1], imgRes);
+				cv::hconcat(imgRes, channels[2], imgRes);
+			}
+
+
+
 			cv::split(imgConv, channelsConv);		
-			cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
-			cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
+			if (enableThrX != 0 && enableThr == 0) {
+				switch (enableThrX) {
+					case 4 : 		caseFlagConv = caseFlagConv | 0b001; 
+									tmpSMin[3] = sMin; 
+									tmpSMax[3] = sMax; 
+									break;
+					case 5 : 		caseFlagConv = caseFlagConv | 0b010;  
+									tmpSMin[4] = sMin; 
+									tmpSMax[4] = sMax; 
+									break;
+					case 6 : 		caseFlagConv = caseFlagConv | 0b100;  
+									tmpSMin[5] = sMin; 
+									tmpSMax[5] = sMax; 
+									break;
+				}
+				switch (caseFlagConv) {
+					case 0b001 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);break;			
+					case 0b010 :	cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);break;
+					case 0b100 :	cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;
+					case 0b011 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
+									cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);break;
+					case 0b101 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
+									cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;
+					case 0b110 :	cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
+									cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;
+					case 0b111 :	cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
+									cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
+									cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);break;				
+				}
+				cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
+				cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
+			} else {
+				caseFlagConv = 0;
+			}
+
+			if (enableThr != 0) {
+				cv::threshold(channelsConv[0], channelsConv[0], tmpSMin[3], tmpSMax[3], CV_THRESH_BINARY);
+				cv::threshold(channelsConv[1], channelsConv[1], tmpSMin[4], tmpSMax[4], CV_THRESH_BINARY);
+				cv::threshold(channelsConv[2], channelsConv[2], tmpSMin[5], tmpSMax[5], CV_THRESH_BINARY);						
+				cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
+				cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
+			} 
+			if (enableThrX == 0 && enableThr == 0) {
+				cv::split(imgConv, channelsConv);		
+				cv::hconcat(channelsConv[0], channelsConv[1], imgResConv);
+				cv::hconcat(imgResConv, channelsConv[2], imgResConv);	
+			}
+		
+			cv::vconcat(imgRes, imgResConv, imgRes);
+
+			cv::cvtColor(imgRes, imgRes, cv::COLOR_GRAY2BGR);
+		
+			channelsMerged.clear();
+			channelsMerged.push_back(channels[0]);
+			channelsMerged.push_back(channels[1]);
+			channelsMerged.push_back(channels[2]);		
+			cv::merge(channelsMerged,finImg);		
+		
+			channelsConvMerged.clear();
+			channelsConvMerged.push_back(channelsConv[0]);
+			channelsConvMerged.push_back(channelsConv[1]);
+			channelsConvMerged.push_back(channelsConv[2]);		
+			cv::merge(channelsConvMerged,finImgConv);
+
+	/*		
+			cv::resize(img, img, cv::Size(fs.width*1.5, fs.height*1.5));
+			cv::resize(imgConv, imgConv, cv::Size(fs.width*1.5, fs.height*1.5));
+			cv::vconcat(img, imgConv, img);		
+		
+			cv::resize(finImg, finImg, cv::Size(fs.width*1.5, fs.height*1.5));
+			cv::resize(finImgConv, finImgConv, cv::Size(fs.width*1.5, fs.height*1.5));
+			cv::vconcat(finImg, finImgConv, finImg);		
+
+			cv::hconcat(img, finImg, finImg);
+	
+			cv::vconcat(finImg, imgRes, imgRes);
+	*/
+			cv::vconcat(img, imgConv, img);
+			cv::vconcat(finImg, finImgConv, finImg);		
+			cv::hconcat(img, imgRes, imgRes);		
+			cv::hconcat(imgRes, finImg, imgRes);
+	
+			cv::imshow("IN/OUT frame", imgRes);			
+		    cv::waitKey(1);
+		} else { 
+			cv::imshow("IN/OUT frame", imgRes);			
+		    cv::waitKey(1);
 		}
-		
-		cv::vconcat(imgRes, imgResConv, imgRes);
-
-		cv::cvtColor(imgRes, imgRes, cv::COLOR_GRAY2BGR);
-		
-		channelsMerged.clear();
-		channelsMerged.push_back(channels[0]);
-		channelsMerged.push_back(channels[1]);
-		channelsMerged.push_back(channels[2]);		
-		cv::merge(channelsMerged,finImg);		
-		
-		channelsConvMerged.clear();
-		channelsConvMerged.push_back(channelsConv[0]);
-		channelsConvMerged.push_back(channelsConv[1]);
-		channelsConvMerged.push_back(channelsConv[2]);		
-		cv::merge(channelsConvMerged,finImgConv);
-
-/*		
-		cv::resize(img, img, cv::Size(fs.width*1.5, fs.height*1.5));
-		cv::resize(imgConv, imgConv, cv::Size(fs.width*1.5, fs.height*1.5));
-		cv::vconcat(img, imgConv, img);		
-		
-		cv::resize(finImg, finImg, cv::Size(fs.width*1.5, fs.height*1.5));
-		cv::resize(finImgConv, finImgConv, cv::Size(fs.width*1.5, fs.height*1.5));
-		cv::vconcat(finImg, finImgConv, finImg);		
-
-		cv::hconcat(img, finImg, finImg);
-	
-		cv::vconcat(finImg, imgRes, imgRes);
-*/
-		cv::vconcat(img, imgConv, img);
-		cv::vconcat(finImg, finImgConv, finImg);		
-		cv::hconcat(img, imgRes, imgRes);		
-		cv::hconcat(imgRes, finImg, imgRes);
-	
-	    cv::imshow("IN/OUT frame", imgRes);			
-        cv::waitKey(1);
-	} 
-		cv::imshow("IN/OUT frame", imgRes);			
-        cv::waitKey(1);
     }
     return (EXIT_SUCCESS);
 }
