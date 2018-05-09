@@ -11,17 +11,22 @@
 #include 	<fstream>
 
 bool        debug = false, flagPxlFmt = false;
+bool 		refFound = false;
 
 //	std::system( "xdotool mousemove 300 400" );
 
 int			enableThr = 0, enableThrX = 0, enableDist = 0; 
-int         suspend = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int         fSettings = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
 int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
 int 		maxConv = 3;
 
+std::vector<cv::Point2f> trapezoidPts;
+cv::Mat		pTform;
+
 cv::Size    fs = cv::Size(640, 480);
 cv::Mat 	cameraMatrix = cv::Mat::eye(3, 3, CV_64F), distCoeffs = cv::Mat::zeros(8, 1, CV_64F);
+cv::Mat 	newCameraMatrix;
 cv::ColorConversionCodes codeColor = cv::COLOR_BGR2YUV;
 
 std::string formatParse (int pxlFormat) 
@@ -63,6 +68,81 @@ void 	callBckConvMode(int, void*)
 	}
 }	
 
+void interactionsSettings () {
+	//    cv::namedWindow("IN/OUT frame");
+//    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
+	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
+	cv::createTrackbar("color space", "IN/OUT frame", &conv, maxConv, callBckConvMode);
+    cv::createTrackbar("freeze settings", "IN/OUT frame", &fSettings, 1);
+
+	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
+	cv::resizeWindow("parameters",200, fs.height*1.5);
+
+	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
+    cv::createTrackbar("brightness", "parameters", &brightness, 128);
+    cv::createTrackbar("contrast", "parameters", &contrast, 95);
+    cv::createTrackbar("saturation", "parameters", &saturation, 128);
+    cv::createTrackbar("hue", "parameters", &hue, 4000);
+//    cv::createTrackbar("gamma", "parameters", &gamma_camera, 200);
+    cv::createTrackbar("gain", "parameters", &gain, 100);
+	cv::createTrackbar("pxlFormat", "parameters", &pxlFormat, 1, callBckFmt);    
+	cv::createTrackbar("enable distortion", "parameters", &enableDist, 1);    
+    cv::createTrackbar("scale", "parameters", &scale, 100);
+
+	cv::namedWindow("threshold",cv::WINDOW_NORMAL);
+	cv::resizeWindow("threshold",200, fs.height*1.5);
+	cv::createTrackbar("enable threshold", "threshold", &enableThr, 1);
+    cv::createTrackbar("thrMin1", "threshold", &tmpSMin[0], 255);
+	cv::createTrackbar("thrMax1", "threshold", &tmpSMax[0], 255);
+    cv::createTrackbar("thrMin2", "threshold", &tmpSMin[1], 255);
+	cv::createTrackbar("thrMax2", "threshold", &tmpSMax[1], 255);
+    cv::createTrackbar("thrMin3", "threshold", &tmpSMin[2], 255);
+	cv::createTrackbar("thrMax3", "threshold", &tmpSMax[2], 255);
+    cv::createTrackbar("thrMin4", "threshold", &tmpSMin[3], 255);
+	cv::createTrackbar("thrMax4", "threshold", &tmpSMax[3], 255);
+    cv::createTrackbar("thrMin5", "threshold", &tmpSMin[4], 255);
+	cv::createTrackbar("thrMax5", "threshold", &tmpSMax[4], 255);
+    cv::createTrackbar("thrMin6", "threshold", &tmpSMin[5], 255);
+	cv::createTrackbar("thrMax6", "threshold", &tmpSMax[5], 255);
+	cv::createTrackbar("enable thr n", "threshold", &enableThrX, 6);
+    cv::createTrackbar("minThreshold", "threshold", &sMin, 255);
+    cv::createTrackbar("maxThreshold", "threshold", &sMax, 255);	
+
+}
+
+bool 	getROI(cv::Mat img) {
+	cv::Mat rvec,tvec,rot3,vConc;			
+	int ww = 9, hh = 6;
+	int h = 6;
+	double squareSize = 32.2;
+
+	cv::Size bsz(ww,hh);
+	std::vector<cv::Point2f> ptvec;
+	bool ref = cv::findChessboardCorners(img, bsz, ptvec,cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE);
+	if (ref)
+	{		
+		std::vector<cv::Point3f> objPts;
+		for( int i = 0; i < hh; ++i )
+		    for( int j = 0; j < ww; ++j )
+		        objPts.push_back(cv::Point3f(j*squareSize, i*squareSize, 0));
+	
+		bool poseFound = cv::solvePnP(objPts, ptvec, cameraMatrix, distCoeffs, rvec, tvec, false, CV_ITERATIVE  );
+		cv::Rodrigues(rvec,rot3);
+		cv::vconcat(rot3.t(),tvec.t(),vConc);
+		cv::Mat pMat = vConc*newCameraMatrix.t();
+		cv::Mat XYZ = (cv::Mat_<double>(4,4) << -1*squareSize,-1*squareSize,-h,1, 9*squareSize,-1*squareSize,-h,1, 9*squareSize,6*squareSize,-h,1, -1*squareSize,6*squareSize,-h,1);
+	
+		trapezoidPts.clear();
+		for (size_t index = 0; index < XYZ.rows; ++index)
+		{
+			cv::Mat xyzi = XYZ.row(index)*pMat;
+			xyzi = xyzi/xyzi.col(2);
+			trapezoidPts.push_back(cv::Point2f(xyzi.at<double>(0,0), xyzi.at<double>(0,1)));
+		}
+	}
+	return ref;
+}
 
 int     main(int ac, char **av)
 {
@@ -71,12 +151,21 @@ int     main(int ac, char **av)
 	size_t 		success = 0;
 	int         wn = 9, hn = 6;	
 	int 		caseFlag = 0, caseFlagConv = 0;		
+	int     	centroidX, centroidY;
 
-	cv::Mat 	img, imgConv, imgChx, imgChxCov, imgUndist, imgRes, imgResConv;
+	cv::Mat 	img, imgConv, imgUndist, imgRes, imgResConv;
+	cv::Mat 	frame, frameChannels[3];
+	
+	std::vector<cv::Vec4i>  hierarchy;
+	std::vector<std::vector<cv::Point>> contours; 
+//	cv::Moments mmt;
+
 	cv::Mat		finImg, finImgConv;
-    cv::Mat 	R, map1, map2, newCameraMatrix;
+    cv::Mat 	R, map1, map2;
 	cv::Mat 	channels[3],channelsConv[3];
 	std::vector<cv::Mat> channelsMerged, channelsConvMerged;
+
+	
 	
 	cv::FileStorage file;
 	if (ac > 1) {
@@ -140,46 +229,9 @@ int     main(int ac, char **av)
 	} else {
 		if (camera.open("/dev/ELP-USB130W01MT-L21")) std::cout << "<config> camera ELP-USB130W01MT-L21 opened " << std::endl;
 	}	
-    
-//    cv::namedWindow("IN/OUT frame");
-//    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
-    cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
-	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
-	cv::createTrackbar("color space", "IN/OUT frame", &conv, maxConv, callBckConvMode);
-    cv::createTrackbar("suspend", "IN/OUT frame", &suspend, 1);
 
-	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
-	cv::resizeWindow("parameters",200, fs.height*1.5);
-
-	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
-    cv::createTrackbar("brightness", "parameters", &brightness, 128);
-    cv::createTrackbar("contrast", "parameters", &contrast, 95);
-    cv::createTrackbar("saturation", "parameters", &saturation, 128);
-    cv::createTrackbar("hue", "parameters", &hue, 4000);
-//    cv::createTrackbar("gamma", "parameters", &gamma_camera, 200);
-    cv::createTrackbar("gain", "parameters", &gain, 100);
-	cv::createTrackbar("pxlFormat", "parameters", &pxlFormat, 1, callBckFmt);    
-	cv::createTrackbar("enable distortion", "parameters", &enableDist, 1);    
-    cv::createTrackbar("scale", "parameters", &scale, 100);
-
-	cv::namedWindow("threshold",cv::WINDOW_NORMAL);
-	cv::resizeWindow("threshold",200, fs.height*1.5);
-	cv::createTrackbar("enable threshold", "threshold", &enableThr, 1);
-    cv::createTrackbar("thrMin1", "threshold", &tmpSMin[0], 255);
-	cv::createTrackbar("thrMax1", "threshold", &tmpSMax[0], 255);
-    cv::createTrackbar("thrMin2", "threshold", &tmpSMin[1], 255);
-	cv::createTrackbar("thrMax2", "threshold", &tmpSMax[1], 255);
-    cv::createTrackbar("thrMin3", "threshold", &tmpSMin[2], 255);
-	cv::createTrackbar("thrMax3", "threshold", &tmpSMax[2], 255);
-    cv::createTrackbar("thrMin4", "threshold", &tmpSMin[3], 255);
-	cv::createTrackbar("thrMax4", "threshold", &tmpSMax[3], 255);
-    cv::createTrackbar("thrMin5", "threshold", &tmpSMin[4], 255);
-	cv::createTrackbar("thrMax5", "threshold", &tmpSMax[4], 255);
-    cv::createTrackbar("thrMin6", "threshold", &tmpSMin[5], 255);
-	cv::createTrackbar("thrMax6", "threshold", &tmpSMax[5], 255);
-	cv::createTrackbar("enable thr n", "threshold", &enableThrX, 6);
-    cv::createTrackbar("minThreshold", "threshold", &sMin, 255);
-    cv::createTrackbar("maxThreshold", "threshold", &sMax, 255);	
+// windows and trackbar settings 
+	interactionsSettings();
 
 //command linuxg4v for camera setting : v4l2-ctl -d /dev/video1 --list-ctrls
 	camera.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
@@ -195,8 +247,8 @@ int     main(int ac, char **av)
 
     while (true)
     {	
-		if (!suspend) {
-
+		if (!fSettings) {
+			refFound = false;
 	//set camera parameters
 			camera.set(cv::CAP_PROP_EXPOSURE, (exposure + 1) / 5000.0);
 			camera.set(cv::CAP_PROP_BRIGHTNESS, brightness / 128.0);
@@ -226,9 +278,6 @@ int     main(int ac, char **av)
 				cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
 				cv::remap(img, img, map1, map2, cv::INTER_LINEAR);
 			}
-
-			cv::hconcat(imgChx, imgUndist, imgRes);
-			cv::hconcat(imgChx, imgUndist, imgRes);
 		 
 	//convert image 	
 			cv::cvtColor(img, imgConv, codeColor);			
@@ -285,7 +334,6 @@ int     main(int ac, char **av)
 				cv::hconcat(channels[0], channels[1], imgRes);
 				cv::hconcat(imgRes, channels[2], imgRes);
 			}
-
 
 
 			cv::split(imgConv, channelsConv);		
@@ -361,9 +409,7 @@ int     main(int ac, char **av)
 			cv::resize(finImg, finImg, cv::Size(fs.width*1.5, fs.height*1.5));
 			cv::resize(finImgConv, finImgConv, cv::Size(fs.width*1.5, fs.height*1.5));
 			cv::vconcat(finImg, finImgConv, finImg);		
-
-			cv::hconcat(img, finImg, finImg);
-	
+			cv::hconcat(img, finImg, finImg);	
 			cv::vconcat(finImg, imgRes, imgRes);
 	*/
 			cv::vconcat(img, imgConv, img);
@@ -374,7 +420,52 @@ int     main(int ac, char **av)
 			cv::imshow("IN/OUT frame", imgRes);			
 		    cv::waitKey(1);
 		} else { 
-			cv::imshow("IN/OUT frame", imgRes);			
+			camera.read(frame);
+			cv::split(frame, frameChannels);
+			cv::threshold(frameChannels[1], frameChannels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);	
+			cv::remap(frameChannels[1], frameChannels[1], map1, map2, cv::INTER_LINEAR);
+			
+			if (!refFound) {
+				refFound = getROI(frameChannels[0]);
+				if (refFound) {
+					std::cout << "\n...ref img found" << std::endl;
+					std::vector<cv::Point2f> rectPts;
+					rectPts.push_back(cv::Point2f(0, 0));
+        			rectPts.push_back(cv::Point2f(fs.width, 0));
+         			rectPts.push_back(cv::Point2f(fs.width, fs.height));
+					rectPts.push_back(cv::Point2f(0, fs.height));
+					pTform = cv::getPerspectiveTransform(trapezoidPts, rectPts);
+				}
+			}	
+			else {
+				cv::warpPerspective(frameChannels[1],frameChannels[1],pTform,fs);	
+				/*				
+				cv::line( frameChannels[1], trapezoidPts[0], trapezoidPts[1], cv::Scalar(110, 220, 0), 4 );
+				cv::line( frameChannels[1], trapezoidPts[1], trapezoidPts[2], cv::Scalar(110, 220, 0), 4 );
+				cv::line( frameChannels[1], trapezoidPts[2], trapezoidPts[3], cv::Scalar(110, 220, 0), 4 );
+				cv::line( frameChannels[1], trapezoidPts[3], trapezoidPts[0], cv::Scalar(110, 220, 0), 4 );
+				*/ 
+				
+				cv::findContours(frameChannels[1], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+				if (contours.size() > 0) { 
+					cv::Moments mmt = cv::moments(contours[0]);
+					centroidX = (int) (mmt.m10 / mmt.m00);
+					centroidY = (int) (mmt.m01 / mmt.m00);
+					//std::cout << "x: " << centroidX << ",y: " << centroidY << std::endl;
+					centroidX = (int) (centroidX * 1920.0 / fs.width);
+					centroidY = (int) (centroidY * 1080.0 / fs.height);
+					std::ostringstream strX,strY;
+					strX << centroidX;
+					strY << centroidY;
+					std::string cmdLinux = "xdotool mousemove " + strX.str() + " " + strY.str();
+					std::system(cmdLinux.c_str()); 
+					//std::system( "xdotool mousemove 300 400" );
+				}
+
+			}
+
+			
+			cv::imshow("IN/OUT frame", frameChannels[1]);			
 		    cv::waitKey(1);
 		}
     }
