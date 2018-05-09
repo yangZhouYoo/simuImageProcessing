@@ -12,11 +12,11 @@
 
 bool        debug = false, flagPxlFmt = false;
 bool 		refFound = false;
-
+int 		tactile = 0;
 //	std::system( "xdotool mousemove 300 400" );
 
 int			enableThr = 0, enableThrX = 0, enableDist = 0; 
-int         fSettings = 0, conv = 0, scale = 60, sMin = 150, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int         fSettings = 0, conv = 0, scale = 100, sMin = 80, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
 int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
 int 		maxConv = 3;
@@ -75,6 +75,7 @@ void interactionsSettings () {
 	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
 	cv::createTrackbar("color space", "IN/OUT frame", &conv, maxConv, callBckConvMode);
     cv::createTrackbar("freeze settings", "IN/OUT frame", &fSettings, 1);
+    cv::createTrackbar("tactile", "IN/OUT frame", &tactile, 1);
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
 	cv::resizeWindow("parameters",200, fs.height*1.5);
@@ -425,6 +426,7 @@ int     main(int ac, char **av)
 			cv::threshold(frameChannels[1], frameChannels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);	
 			cv::remap(frameChannels[1], frameChannels[1], map1, map2, cv::INTER_LINEAR);
 			
+		if (tactile == 1) {
 			if (!refFound) {
 				refFound = getROI(frameChannels[0]);
 				if (refFound) {
@@ -438,14 +440,8 @@ int     main(int ac, char **av)
 				}
 			}	
 			else {
-				cv::warpPerspective(frameChannels[1],frameChannels[1],pTform,fs);	
-				/*				
-				cv::line( frameChannels[1], trapezoidPts[0], trapezoidPts[1], cv::Scalar(110, 220, 0), 4 );
-				cv::line( frameChannels[1], trapezoidPts[1], trapezoidPts[2], cv::Scalar(110, 220, 0), 4 );
-				cv::line( frameChannels[1], trapezoidPts[2], trapezoidPts[3], cv::Scalar(110, 220, 0), 4 );
-				cv::line( frameChannels[1], trapezoidPts[3], trapezoidPts[0], cv::Scalar(110, 220, 0), 4 );
-				*/ 
-				
+
+				cv::warpPerspective(frameChannels[1],frameChannels[1],pTform,fs);									
 				cv::findContours(frameChannels[1], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 				if (contours.size() > 0) { 
 					cv::Moments mmt = cv::moments(contours[0]);
@@ -462,10 +458,11 @@ int     main(int ac, char **av)
 					//std::system( "xdotool mousemove 300 400" );
 				}
 
-			}
-
-			
-			cv::imshow("IN/OUT frame", frameChannels[1]);			
+			}	
+		}
+	
+			cv::imshow("IN/OUT frame", frameChannels[1]);	
+		
 		    cv::waitKey(1);
 		}
     }
