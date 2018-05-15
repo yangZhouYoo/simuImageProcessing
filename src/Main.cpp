@@ -16,7 +16,7 @@ int 		tactile = 0;
 //	std::system( "xdotool mousemove 300 400" );
 
 int			enableThr = 0, enableThrX = 0, enableDist = 0; 
-int         fSettings = 0, conv = 0, scale = 100, sMin = 80, sMax = 256, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int         fSettings = 0, conv = 0, scale = 60, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
 int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
 int 		maxConv = 3;
@@ -429,6 +429,7 @@ int     main(int ac, char **av)
 		if (tactile == 1) {
 			if (!refFound) {
 				refFound = getROI(frameChannels[0]);
+//				refFound = getROI(frame);
 				if (refFound) {
 					std::cout << "\n...ref img found" << std::endl;
 					std::vector<cv::Point2f> rectPts;
@@ -437,7 +438,10 @@ int     main(int ac, char **av)
          			rectPts.push_back(cv::Point2f(fs.width, fs.height));
 					rectPts.push_back(cv::Point2f(0, fs.height));
 					pTform = cv::getPerspectiveTransform(trapezoidPts, rectPts);
+				} else {
+					std::cout << "can not find a available reference image " << std::endl; 	
 				}
+
 			}	
 			else {
 
