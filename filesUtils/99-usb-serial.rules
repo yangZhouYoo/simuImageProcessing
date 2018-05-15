@@ -1,1 +1,0 @@
-SUBSYSTEM=="video4linux", ATTRS{idVendor}=="05a3", ATTRS{idProduct}=="9320", SYMLINK+="ELP-USB130W01MT-L21" 
