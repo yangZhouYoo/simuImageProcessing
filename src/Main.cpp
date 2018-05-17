@@ -74,7 +74,7 @@ void interactionsSettings () {
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
 	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
 	cv::createTrackbar("color space", "IN/OUT frame", &conv, maxConv, callBckConvMode);
-    cv::createTrackbar("freeze settings", "IN/OUT frame", &fSettings, 1);
+    cv::createTrackbar("freeze settings", "IN/OUT frame", &fSettings, 3);
     cv::createTrackbar("tactile", "IN/OUT frame", &tactile, 1);
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
@@ -112,14 +112,14 @@ void interactionsSettings () {
 
 }
 
-bool 	getROI(cv::Mat img) {
+bool 	getROI(cv::Mat img, std::vector<cv::Point2f> &ptvec) {
 	cv::Mat rvec,tvec,rot3,vConc;			
 	int ww = 9, hh = 6;
 	int h = 6;
 	double squareSize = 32.2;
 
 	cv::Size bsz(ww,hh);
-	std::vector<cv::Point2f> ptvec;
+	ptvec.clear();
 	bool ref = cv::findChessboardCorners(img, bsz, ptvec,cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE);
 	if (ref)
 	{		
@@ -154,9 +154,12 @@ int     main(int ac, char **av)
 	int 		caseFlag = 0, caseFlagConv = 0;		
 	int     	centroidX, centroidY;
 
+	int 		idxChan = 0;	
+
 	cv::Mat 	img, imgConv, imgUndist, imgRes, imgResConv;
 	cv::Mat 	frame, frameChannels[3];
 	
+	std::vector<cv::Point2f> ptvec;
 	std::vector<cv::Vec4i>  hierarchy;
 	std::vector<std::vector<cv::Point>> contours; 
 //	cv::Moments mmt;
@@ -248,7 +251,7 @@ int     main(int ac, char **av)
 
     while (true)
     {	
-		if (!fSettings) {
+		if (fSettings == 0) {
 			refFound = false;
 	//set camera parameters
 			camera.set(cv::CAP_PROP_EXPOSURE, (exposure + 1) / 5000.0);
@@ -422,50 +425,57 @@ int     main(int ac, char **av)
 		    cv::waitKey(1);
 		} else { 
 			camera.read(frame);
+			idxChan = fSettings - 1;
 			cv::split(frame, frameChannels);
-			cv::threshold(frameChannels[1], frameChannels[1], tmpSMin[1], tmpSMax[1], CV_THRESH_BINARY);	
-			cv::remap(frameChannels[1], frameChannels[1], map1, map2, cv::INTER_LINEAR);
-			
-		if (tactile == 1) {
-			if (!refFound) {
-				refFound = getROI(frameChannels[0]);
-//				refFound = getROI(frame);
-				if (refFound) {
-					std::cout << "\n...ref img found" << std::endl;
-					std::vector<cv::Point2f> rectPts;
-					rectPts.push_back(cv::Point2f(0, 0));
-        			rectPts.push_back(cv::Point2f(fs.width, 0));
-         			rectPts.push_back(cv::Point2f(fs.width, fs.height));
-					rectPts.push_back(cv::Point2f(0, fs.height));
-					pTform = cv::getPerspectiveTransform(trapezoidPts, rectPts);
-				} else {
-					std::cout << "can not find a available reference image " << std::endl; 	
-				}
+			cv::threshold(frameChannels[idxChan], frameChannels[idxChan], tmpSMin[idxChan], tmpSMax[idxChan], CV_THRESH_BINARY);	
+			cv::remap(frameChannels[idxChan], frameChannels[idxChan], map1, map2, cv::INTER_LINEAR);
 
-			}	
-			else {
+			if (tactile == 1) {
+				if (!refFound) {
+					refFound = getROI(frameChannels[0], ptvec);
+	//				refFound = getROI(frame);
+					if (refFound) {
+						std::cout << "\n<ref> found" << std::endl;					
+						std::cout << "<ref> chess board corners" << std::endl;
+					
+						cv::drawChessboardCorners(frame, cv::Size(9,6), ptvec, true);
+						cv::imshow("Chessboard", frame);
+						cv::waitKey(1);
 
-				cv::warpPerspective(frameChannels[1],frameChannels[1],pTform,fs);									
-				cv::findContours(frameChannels[1], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-				if (contours.size() > 0) { 
-					cv::Moments mmt = cv::moments(contours[0]);
-					centroidX = (int) (mmt.m10 / mmt.m00);
-					centroidY = (int) (mmt.m01 / mmt.m00);
-					//std::cout << "x: " << centroidX << ",y: " << centroidY << std::endl;
-					centroidX = (int) (centroidX * 1920.0 / fs.width);
-					centroidY = (int) (centroidY * 1080.0 / fs.height);
-					std::ostringstream strX,strY;
-					strX << centroidX;
-					strY << centroidY;
-					std::string cmdLinux = "xdotool mousemove " + strX.str() + " " + strY.str();
-					std::system(cmdLinux.c_str()); 
-					//std::system( "xdotool mousemove 300 400" );
-				}
+						std::vector<cv::Point2f> rectPts;
+						rectPts.push_back(cv::Point2f(0, 0));
+		    			rectPts.push_back(cv::Point2f(fs.width, 0));
+		     			rectPts.push_back(cv::Point2f(fs.width, fs.height));
+						rectPts.push_back(cv::Point2f(0, fs.height));
+						pTform = cv::getPerspectiveTransform(trapezoidPts, rectPts);
+					} else {
+						std::cout << "can not find a available reference image " << std::endl; 	
+					}
 
-			}	
-		}
+				}	
+				else {
+
+					cv::warpPerspective(frameChannels[idxChan],frameChannels[idxChan],pTform,fs);									
+					cv::findContours(frameChannels[idxChan], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+					if (contours.size() > 0) { 
+						cv::Moments mmt = cv::moments(contours[0]);
+						centroidX = (int) (mmt.m10 / mmt.m00);
+						centroidY = (int) (mmt.m01 / mmt.m00);
+						//std::cout << "x: " << centroidX << ",y: " << centroidY << std::endl;
+						centroidX = (int) (centroidX * 1920.0 / fs.width);
+						centroidY = (int) (centroidY * 1080.0 / fs.height);
+						std::ostringstream strX,strY;
+						strX << centroidX;
+						strY << centroidY;
+						std::string cmdLinux = "xdotool mousemove " + strX.str() + " " + strY.str();
+						std::system(cmdLinux.c_str()); 
+						//std::system( "xdotool mousemove 300 400" );
+					}
+
+				}	
+			}
 	
-			cv::imshow("IN/OUT frame", frameChannels[1]);	
+			cv::imshow("IN/OUT frame", frameChannels[idxChan]);	
 		
 		    cv::waitKey(1);
 		}
