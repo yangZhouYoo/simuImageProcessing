@@ -16,7 +16,7 @@ int 		tactile = 0;
 //	std::system( "xdotool mousemove 300 400" );
 
 int			enableThr = 0, enableThrX = 0, enableDist = 0; 
-int         fSettings = 0, conv = 0, scale = 60, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 64, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int         fSettings = 0, conv = 0, scale = 0, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 96, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
 int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
 int 		maxConv = 3;
@@ -115,12 +115,12 @@ void interactionsSettings () {
 bool 	getROI(cv::Mat img, std::vector<cv::Point2f> &ptvec) {
 	cv::Mat rvec,tvec,rot3,vConc;			
 	int ww = 9, hh = 6;
-	int h = 6;
-	double squareSize = 32.2;
+	int h = 0;
+	double squareSize = 32.3;
 
 	cv::Size bsz(ww,hh);
 	ptvec.clear();
-	bool ref = cv::findChessboardCorners(img, bsz, ptvec,cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE);
+	bool ref = cv::findChessboardCorners(img, bsz, ptvec); //,cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE
 	if (ref)
 	{		
 		std::vector<cv::Point3f> objPts;
@@ -133,7 +133,6 @@ bool 	getROI(cv::Mat img, std::vector<cv::Point2f> &ptvec) {
 		cv::vconcat(rot3.t(),tvec.t(),vConc);
 		cv::Mat pMat = vConc*newCameraMatrix.t();
 		cv::Mat XYZ = (cv::Mat_<double>(4,4) << -1*squareSize,-1*squareSize,-h,1, 9*squareSize,-1*squareSize,-h,1, 9*squareSize,6*squareSize,-h,1, -1*squareSize,6*squareSize,-h,1);
-	
 		trapezoidPts.clear();
 		for (size_t index = 0; index < XYZ.rows; ++index)
 		{
@@ -147,10 +146,8 @@ bool 	getROI(cv::Mat img, std::vector<cv::Point2f> &ptvec) {
 
 int     main(int ac, char **av)
 {
-
 	double 		ss = 32.2, rms;
-	size_t 		success = 0;
-	int         wn = 9, hn = 6;	
+	int         wn = 8, hn = 5;	
 	int 		caseFlag = 0, caseFlagConv = 0;		
 	int     	centroidX, centroidY;
 
@@ -158,19 +155,19 @@ int     main(int ac, char **av)
 
 	cv::Mat 	img, imgConv, imgUndist, imgRes, imgResConv;
 	cv::Mat 	frame, frameChannels[3];
-	
+
 	std::vector<cv::Point2f> ptvec;
 	std::vector<cv::Vec4i>  hierarchy;
 	std::vector<std::vector<cv::Point>> contours; 
-//	cv::Moments mmt;
+	//	cv::Moments mmt;
 
 	cv::Mat		finImg, finImgConv;
-    cv::Mat 	R, map1, map2;
+	cv::Mat 	R, map1, map2;
 	cv::Mat 	channels[3],channelsConv[3];
 	std::vector<cv::Mat> channelsMerged, channelsConvMerged;
 
-	
-	
+
+
 	cv::FileStorage file;
 	if (ac > 1) {
 		char    	currentPath[256];
@@ -182,51 +179,51 @@ int     main(int ac, char **av)
 				return (EXIT_FAILURE);
 			}
 		calibrationFilePath = std::string(currentPath) + "/" + av[1];
-		
+	
 		if (file.open(calibrationFilePath, cv::FileStorage::READ)) 
 		std::cout << "\n<config> calibration file in \"" << calibrationFilePath << "\" opened"<<std::endl;
 	} else {
 		if (file.open("calibration.json", cv::FileStorage::READ)) 
 		std::cout << "\n<config> calibration file \"calibration.json\" in current path opened" << std::endl;
 	}
-    if (!file.isOpened())
-    {
-        std::cerr << "Could not open calibration file '" << av[1] << "'" << std::endl;
-        return (EXIT_FAILURE);
-    }
+	if (!file.isOpened())
+	{
+		std::cerr << "Could not open calibration file '" << av[1] << "'" << std::endl;
+		return (EXIT_FAILURE);
+	}
 
-    cameraMatrix.at<double>(0, 0) = file["distortion"]["fx"];
-    cameraMatrix.at<double>(0, 1) = 0;
-    cameraMatrix.at<double>(0, 2) = file["distortion"]["cx"];
+	cameraMatrix.at<double>(0, 0) = file["distortion"]["fx"];
+	cameraMatrix.at<double>(0, 1) = 0;
+	cameraMatrix.at<double>(0, 2) = file["distortion"]["cx"];
 
-    cameraMatrix.at<double>(1, 0) = 0;
-    cameraMatrix.at<double>(1, 1) = file["distortion"]["fy"];
-    cameraMatrix.at<double>(1, 2) = file["distortion"]["cy"];
+	cameraMatrix.at<double>(1, 0) = 0;
+	cameraMatrix.at<double>(1, 1) = file["distortion"]["fy"];
+	cameraMatrix.at<double>(1, 2) = file["distortion"]["cy"];
 
-    cameraMatrix.at<double>(2, 0) = 0;
-    cameraMatrix.at<double>(2, 1) = 0;
-    cameraMatrix.at<double>(2, 2) = 1;
+	cameraMatrix.at<double>(2, 0) = 0;
+	cameraMatrix.at<double>(2, 1) = 0;
+	cameraMatrix.at<double>(2, 2) = 1;
 
-    distCoeffs.at<double>(0) = file["distortion"]["lens_coefficients"]["k1"];
-    distCoeffs.at<double>(1) = file["distortion"]["lens_coefficients"]["k2"];
-    distCoeffs.at<double>(2) = file["distortion"]["lens_coefficients"]["p1"];
-    distCoeffs.at<double>(3) = file["distortion"]["lens_coefficients"]["p2"];
-    distCoeffs.at<double>(4) = file["distortion"]["lens_coefficients"]["k3"];
-    distCoeffs.at<double>(5) = file["distortion"]["lens_coefficients"]["k4"];
-    distCoeffs.at<double>(6) = file["distortion"]["lens_coefficients"]["k5"];
-    distCoeffs.at<double>(7) = file["distortion"]["lens_coefficients"]["k6"];
+	distCoeffs.at<double>(0) = file["distortion"]["lens_coefficients"]["k1"];
+	distCoeffs.at<double>(1) = file["distortion"]["lens_coefficients"]["k2"];
+	distCoeffs.at<double>(2) = file["distortion"]["lens_coefficients"]["p1"];
+	distCoeffs.at<double>(3) = file["distortion"]["lens_coefficients"]["p2"];
+	distCoeffs.at<double>(4) = file["distortion"]["lens_coefficients"]["k3"];
+	distCoeffs.at<double>(5) = file["distortion"]["lens_coefficients"]["k4"];
+	distCoeffs.at<double>(6) = file["distortion"]["lens_coefficients"]["k5"];
+	distCoeffs.at<double>(7) = file["distortion"]["lens_coefficients"]["k6"];
 
-    file.release();    
-	
-//    std::cout << "Camera matrix: " << std::endl << cameraMatrix << std::endl;
-//    std::cout << "Distortion coeffs: \n" << distCoeffs << std::endl;
+	file.release();    
 
-    R = cv::Mat::eye(3, 3, CV_64F);	
-    newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0f, cv::Size(640, 480), 0, true);
-    cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
-	
+	//    std::cout << "Camera matrix: " << std::endl << cameraMatrix << std::endl;
+	//    std::cout << "Distortion coeffs: \n" << distCoeffs << std::endl;
+
+	R = cv::Mat::eye(3, 3, CV_64F);	
+	newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, cv::Size(640, 480), scale / 100.0f, cv::Size(640, 480), 0, true);
+	cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, R, newCameraMatrix, fs, CV_32FC1, map1, map2);
+
 	cv::VideoCapture camera;
-//	camera.open(ac == 3 ? std::stoi(av[2]) : 0);
+	//	camera.open(ac == 3 ? std::stoi(av[2]) : 0);
 	if (ac == 3) 
 	{
 		if (camera.open(std::stoi(av[2]))) std::cout << "<config> camera dev video" << av[2] << " opened" << std::endl;
@@ -234,20 +231,34 @@ int     main(int ac, char **av)
 		if (camera.open("/dev/ELP-USB130W01MT-L21")) std::cout << "<config> camera ELP-USB130W01MT-L21 opened " << std::endl;
 	}	
 
-// windows and trackbar settings 
+	// windows and trackbar settings 
 	interactionsSettings();
 
-//command linuxg4v for camera setting : v4l2-ctl -d /dev/video1 --list-ctrls
+	//command linuxg4v for camera setting : v4l2-ctl -d /dev/video1 --list-ctrls
 	camera.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
 	//	camera.set(cv::CAP_PROP_FOURCC,CV_FOURCC('M','J','P','G'));
 	camera.set(cv::CAP_PROP_FRAME_WIDTH,fs.width);
 	camera.set(cv::CAP_PROP_FRAME_HEIGHT,fs.height);
-	
+
 	int fmt = static_cast<int>(camera.get(cv::CAP_PROP_FOURCC));
 	char fmtChar[] = {(char)(fmt & 0XFF), (char)((fmt & 0XFF00) >> 8), (char)((fmt & 0XFF0000) >> 16), (char)((fmt & 0XFF000000) >> 24), 0};
 	std::cout << "\ndefault piexl foramt: " << fmtChar << std::endl;
 	std::cout << "frame size: [" << camera.get(cv::CAP_PROP_FRAME_WIDTH) << "X" << camera.get(cv::CAP_PROP_FRAME_HEIGHT) << "]"<< std::endl;
 	std::cout << "pxlFormat: " << formatParse(camera.get(cv::CAP_PROP_FORMAT)) << std::endl;
+
+	std::cout << "screen resolution: " ;
+	const char *command="xrandr | grep '*'";
+	FILE *fpipe = (FILE*)popen(command,"r");
+	char line[256];
+	while (fgets(line, sizeof(line), fpipe))
+	{	
+		std::cout << line;
+	//  	  printf("%s", line);
+	}
+	std::cout << std::endl;	
+	pclose(fpipe);
+
+		
 
     while (true)
     {	
@@ -429,14 +440,16 @@ int     main(int ac, char **av)
 			cv::split(frame, frameChannels);
 			cv::threshold(frameChannels[idxChan], frameChannels[idxChan], tmpSMin[idxChan], tmpSMax[idxChan], CV_THRESH_BINARY);	
 			cv::remap(frameChannels[idxChan], frameChannels[idxChan], map1, map2, cv::INTER_LINEAR);
+			cv::remap(frame, frame, map1, map2, cv::INTER_LINEAR);
 
 			if (tactile == 1) {
 				if (!refFound) {
-					refFound = getROI(frameChannels[0], ptvec);
-	//				refFound = getROI(frame);
+					// red channel for getting chessboard corners
+	//				refFound = getROI(frameChannels[0], ptvec);
+					refFound = getROI(frame, ptvec);
 					if (refFound) {
 						std::cout << "\n<ref> found" << std::endl;					
-						std::cout << "<ref> chess board corners" << std::endl;
+						std::cout << "<ref> draw chess board corners" << std::endl;
 					
 						cv::drawChessboardCorners(frame, cv::Size(9,6), ptvec, true);
 						cv::imshow("Chessboard", frame);
@@ -455,7 +468,8 @@ int     main(int ac, char **av)
 				}	
 				else {
 
-					cv::warpPerspective(frameChannels[idxChan],frameChannels[idxChan],pTform,fs);									
+					cv::warpPerspective(frameChannels[idxChan],frameChannels[idxChan],pTform,fs);	
+					cv::warpPerspective(frame,frame,pTform,fs);																	
 					cv::findContours(frameChannels[idxChan], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 					if (contours.size() > 0) { 
 						cv::Moments mmt = cv::moments(contours[0]);
@@ -474,8 +488,9 @@ int     main(int ac, char **av)
 
 				}	
 			}
-	
-			cv::imshow("IN/OUT frame", frameChannels[idxChan]);	
+			cv::cvtColor(frameChannels[idxChan], frameChannels[idxChan], cv::COLOR_GRAY2BGR);
+			cv::hconcat(frame, frameChannels[idxChan], frame);
+			cv::imshow("IN/OUT frame", frame);	
 		
 		    cv::waitKey(1);
 		}
