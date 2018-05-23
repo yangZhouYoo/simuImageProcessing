@@ -451,6 +451,7 @@ int     main(int ac, char **av)
 			idxChan = fSettings - 1;
 			cv::split(img, channels);
 			cv::threshold(channels[idxChan], channels[idxChan], tmpSMin[idxChan], tmpSMax[idxChan], CV_THRESH_BINARY);	
+
 			cv::remap(channels[idxChan], frameChannels[idxChan], map1, map2, cv::INTER_LINEAR);
 			cv::remap(img, frame, map1, map2, cv::INTER_LINEAR);
 
@@ -463,8 +464,8 @@ int     main(int ac, char **av)
 						std::cout << "\n<ref> found" << std::endl;					
 						std::cout << "<ref> draw chess board corners" << std::endl;
 					
-						cv::drawChessboardCorners(frame, cv::Size(9,6), ptvec, true);
-						cv::imshow("Chessboard", frame);
+						cv::drawChessboardCorners(img, cv::Size(9,6), ptvec, true);
+						cv::imshow("Chessboard", img);
 						cv::waitKey(1);
 
 						std::vector<cv::Point2f> rectPts;
