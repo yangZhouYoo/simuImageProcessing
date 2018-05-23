@@ -64,11 +64,11 @@ void 	callBckConvMode(int, void*)
 		case 1: 		codeColor = cv::COLOR_BGR2HSV;std::cout << "color space: HSV" << std::endl; break;
 		case 2: 		codeColor = cv::COLOR_BGR2HLS;std::cout << "color space: HLS" << std::endl; break;
 		case 3: 		codeColor = cv::COLOR_BGR2YCrCb;std::cout << "color space: YCrCb" << std::endl; break;
-		default: 		codeColor = cv::COLOR_BGR2YUV;std::cout << "color space: YUV" << std::endl;break; 
+		default: 		codeColor = cv::COLOR_BGR2HSV;std::cout << "color space: HSV" << std::endl;break; 
 	}
 }	
 
-void interactionsSettings () {
+void displaySettings () {
 	//    cv::namedWindow("IN/OUT frame");
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
@@ -147,7 +147,6 @@ bool 	getROI(cv::Mat img, std::vector<cv::Point2f> &ptvec) {
 int     main(int ac, char **av)
 {
 	double 		ss = 32.2, rms;
-	int         wn = 8, hn = 5;	
 	int 		caseFlag = 0, caseFlagConv = 0;		
 	int     	centroidX, centroidY;
 
@@ -232,7 +231,7 @@ int     main(int ac, char **av)
 	}	
 
 	// windows and trackbar settings 
-	interactionsSettings();
+	displaySettings();
 
 	//command linuxg4v for camera setting : v4l2-ctl -d /dev/video1 --list-ctrls
 	camera.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
@@ -245,8 +244,9 @@ int     main(int ac, char **av)
 	std::cout << "\ndefault piexl foramt: " << fmtChar << std::endl;
 	std::cout << "frame size: [" << camera.get(cv::CAP_PROP_FRAME_WIDTH) << "X" << camera.get(cv::CAP_PROP_FRAME_HEIGHT) << "]"<< std::endl;
 	std::cout << "pxlFormat: " << formatParse(camera.get(cv::CAP_PROP_FORMAT)) << std::endl;
-
-	std::cout << "screen resolution: " ;
+	
+	// get screen size
+	std::cout << "screen resolution: \n" ;
 	const char *command="xrandr | grep '*'";
 	FILE *fpipe = (FILE*)popen(command,"r");
 	char line[256];
@@ -258,7 +258,19 @@ int     main(int ac, char **av)
 	std::cout << std::endl;	
 	pclose(fpipe);
 
-		
+	char subbuff[10];
+	memcpy( subbuff, &line[3], 9 );
+	subbuff[9] = '\0';
+	std::cout << "sub buff: " << subbuff << std::endl;	
+	
+	std::vector<char*> v;
+	char* chars_array = strtok(subbuff, "x");	
+	while(chars_array)
+    {
+        v.push_back(chars_array);
+        chars_array = strtok(NULL, "x");
+    }
+	std::cout << "width: " << atoi(v[0]) << "\nheight: " << atoi(v[1]) << std::endl;
 
     while (true)
     {	
@@ -435,18 +447,18 @@ int     main(int ac, char **av)
 			cv::imshow("IN/OUT frame", imgRes);			
 		    cv::waitKey(1);
 		} else { 
-			camera.read(frame);
+			camera.read(img);
 			idxChan = fSettings - 1;
-			cv::split(frame, frameChannels);
-			cv::threshold(frameChannels[idxChan], frameChannels[idxChan], tmpSMin[idxChan], tmpSMax[idxChan], CV_THRESH_BINARY);	
-			cv::remap(frameChannels[idxChan], frameChannels[idxChan], map1, map2, cv::INTER_LINEAR);
-			cv::remap(frame, frame, map1, map2, cv::INTER_LINEAR);
+			cv::split(img, channels);
+			cv::threshold(channels[idxChan], channels[idxChan], tmpSMin[idxChan], tmpSMax[idxChan], CV_THRESH_BINARY);	
+			cv::remap(channels[idxChan], frameChannels[idxChan], map1, map2, cv::INTER_LINEAR);
+			cv::remap(img, frame, map1, map2, cv::INTER_LINEAR);
 
 			if (tactile == 1) {
 				if (!refFound) {
 					// red channel for getting chessboard corners
 	//				refFound = getROI(frameChannels[0], ptvec);
-					refFound = getROI(frame, ptvec);
+					refFound = getROI(img, ptvec);
 					if (refFound) {
 						std::cout << "\n<ref> found" << std::endl;					
 						std::cout << "<ref> draw chess board corners" << std::endl;
