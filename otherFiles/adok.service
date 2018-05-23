@@ -1,0 +1,13 @@
+[Unit]
+Description=Adok Application
+ConditionPathExists=/home/odroid/versionK6/build/
+
+[Service]
+Type=idle
+ExecStart=/home/odroid/versionK6/build/adok ../../../home/odroid/auto-calib/autocalib-test/data/calibration.json
+KillMode=process
+Restart=always
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target
