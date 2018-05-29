@@ -16,7 +16,7 @@ int 		tactile = 0;
 //	std::system( "xdotool mousemove 300 400" );
 
 int			enableThr = 0, enableThrX = 0, enableDist = 0; 
-int         fSettings = 0, conv = 0, scale = 0, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 96, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int         fSettings = 0, conv = 0, scale = 50, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 96, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
 int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
 int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
 int 		maxConv = 3;
@@ -72,13 +72,13 @@ void displaySettings () {
 	//    cv::namedWindow("IN/OUT frame");
 //    cv::namedWindow("IN/OUT frame",cv::WINDOW_AUTOSIZE);
     cv::namedWindow("IN/OUT frame",cv::WINDOW_NORMAL);
-	cv::resizeWindow("IN/OUT frame",fs.width*2.6, fs.height*1.5);
+	cv::resizeWindow("IN/OUT frame",fs.width, fs.height);
 	cv::createTrackbar("color space", "IN/OUT frame", &conv, maxConv, callBckConvMode);
     cv::createTrackbar("freeze settings", "IN/OUT frame", &fSettings, 3);
     cv::createTrackbar("tactile", "IN/OUT frame", &tactile, 1);
 
 	cv::namedWindow("parameters",cv::WINDOW_NORMAL);
-	cv::resizeWindow("parameters",200, fs.height*1.5);
+	cv::resizeWindow("parameters",200, fs.height);
 
 	cv::createTrackbar("exposure", "parameters", &exposure, 4999);	
     cv::createTrackbar("brightness", "parameters", &brightness, 128);
@@ -92,7 +92,7 @@ void displaySettings () {
     cv::createTrackbar("scale", "parameters", &scale, 100);
 
 	cv::namedWindow("threshold",cv::WINDOW_NORMAL);
-	cv::resizeWindow("threshold",200, fs.height*1.5);
+	cv::resizeWindow("threshold",200, fs.height);
 	cv::createTrackbar("enable threshold", "threshold", &enableThr, 1);
     cv::createTrackbar("thrMin1", "threshold", &tmpSMin[0], 255);
 	cv::createTrackbar("thrMax1", "threshold", &tmpSMax[0], 255);
@@ -153,7 +153,6 @@ int     main(int ac, char **av)
 	int 		idxChan = 0;	
 
 	cv::Mat 	img, imgConv, imgUndist, imgRes, imgResConv;
-	cv::Mat 	frame, frameChannels[3];
 
 	std::vector<cv::Point2f> ptvec;
 	std::vector<cv::Vec4i>  hierarchy;
@@ -227,7 +226,7 @@ int     main(int ac, char **av)
 	{
 		if (camera.open(std::stoi(av[2]))) std::cout << "<config> camera dev video" << av[2] << " opened" << std::endl;
 	} else {
-		if (camera.open("/dev/ELP-USB130W01MT-L21")) std::cout << "<config> camera ELP-USB130W01MT-L21 opened " << std::endl;
+		if (camera.open("/dev/ELP-USB130W01MT-L21")) std::cout << "<config> camera \"ELP-USB130W01MT-L21\" opened " << std::endl;
 	}	
 
 	// windows and trackbar settings 
@@ -452,13 +451,13 @@ int     main(int ac, char **av)
 			cv::split(img, channels);
 			cv::threshold(channels[idxChan], channels[idxChan], tmpSMin[idxChan], tmpSMax[idxChan], CV_THRESH_BINARY);	
 
-			cv::remap(channels[idxChan], frameChannels[idxChan], map1, map2, cv::INTER_LINEAR);
-			cv::remap(img, frame, map1, map2, cv::INTER_LINEAR);
+			cv::remap(channels[idxChan], channels[idxChan], map1, map2, cv::INTER_LINEAR);
+			cv::remap(img, imgUndist, map1, map2, cv::INTER_LINEAR);
 
 			if (tactile == 1) {
 				if (!refFound) {
 					// red channel for getting chessboard corners
-	//				refFound = getROI(frameChannels[0], ptvec);
+	//				refFound = getROI(channels[0], ptvec);
 					refFound = getROI(img, ptvec);
 					if (refFound) {
 						std::cout << "\n<ref> found" << std::endl;					
@@ -481,9 +480,9 @@ int     main(int ac, char **av)
 				}	
 				else {
 
-					cv::warpPerspective(frameChannels[idxChan],frameChannels[idxChan],pTform,fs);	
-					cv::warpPerspective(frame,frame,pTform,fs);																	
-					cv::findContours(frameChannels[idxChan], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+					cv::warpPerspective(channels[idxChan],channels[idxChan],pTform,fs);	
+					cv::warpPerspective(imgUndist,imgUndist,pTform,fs);																	
+					cv::findContours(channels[idxChan], contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 					if (contours.size() > 0) { 
 						cv::Moments mmt = cv::moments(contours[0]);
 						centroidX = (int) (mmt.m10 / mmt.m00);
@@ -501,9 +500,9 @@ int     main(int ac, char **av)
 
 				}	
 			}
-			cv::cvtColor(frameChannels[idxChan], frameChannels[idxChan], cv::COLOR_GRAY2BGR);
-			cv::hconcat(frame, frameChannels[idxChan], frame);
-			cv::imshow("IN/OUT frame", frame);	
+			cv::cvtColor(channels[idxChan], channels[idxChan], cv::COLOR_GRAY2BGR);
+			cv::hconcat(imgUndist, channels[idxChan], imgUndist);
+			cv::imshow("IN/OUT frame", imgUndist);	
 		
 		    cv::waitKey(1);
 		}
