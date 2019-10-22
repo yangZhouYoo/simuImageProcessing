@@ -1,32 +1,32 @@
-#include    <unistd.h>
-#include    <iostream>
+#include <unistd.h>
+#include <iostream>
 
-#include    <opencv2/calib3d.hpp>
-#include    <opencv2/highgui.hpp>
-#include    <opencv2/imgproc.hpp>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
-#include	<jsoncpp/json/value.h>
-#include	<jsoncpp/json/reader.h>
-#include	<jsoncpp/json/writer.h>
-#include 	<fstream>
+#include <jsoncpp/json/value.h>
+#include <jsoncpp/json/reader.h>
+#include <jsoncpp/json/writer.h>
+#include <fstream>
 
-bool        debug = false, flagPxlFmt = false;
-bool 		refFound = false;
-int 		tactile = 0;
-//	std::system( "xdotool mousemove 300 400" );
+bool debug = false, flagPxlFmt = false;
+bool refFound = false;
+int tactile = 0;
+//std::system( "xdotool mousemove 300 400" );
 
-int			enableThr = 0, enableThrX = 0, enableDist = 0; 
-int         fSettings = 0, conv = 0, scale = 50, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 96, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
-int 		tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
-int 		tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
-int 		maxConv = 3;
+int enableThr = 0, enableThrX = 0, enableDist = 0; 
+int fSettings = 0, conv = 0, scale = 50, sMin = 150, sMax = 255, pxlFormat = 0, nCh = 1, exposure = 156, brightness = 96, contrast = 32, hue = 2000, gain = 0, saturation = 50; // gamma_camera = 0
+int tmpSMin[] = {sMin, sMin, sMin, sMin, sMin, sMin};		
+int tmpSMax[] = {sMax, sMax, sMax, sMax, sMax, sMax};
+int maxConv = 3;
 
 std::vector<cv::Point2f> trapezoidPts;
-cv::Mat		pTform;
+cv::Mat	pTform;
 
-cv::Size    fs = cv::Size(640, 480);
-cv::Mat 	cameraMatrix = cv::Mat::eye(3, 3, CV_64F), distCoeffs = cv::Mat::zeros(8, 1, CV_64F);
-cv::Mat 	newCameraMatrix;
+cv::Size fs = cv::Size(640, 480);
+cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F), distCoeffs = cv::Mat::zeros(8, 1, CV_64F);
+cv::Mat newCameraMatrix;
 cv::ColorConversionCodes codeColor = cv::COLOR_BGR2YUV;
 
 std::string formatParse (int pxlFormat) 
@@ -36,19 +36,36 @@ std::string formatParse (int pxlFormat)
 	uchar chans = 1 + (pxlFormat >> CV_CN_SHIFT);
 
 	switch (depth) {
-		case CV_8U: 	r = "8U";break;
-		case CV_8S: 	r = "8S";break;
-		case CV_16U: 	r = "16U";break;
-		case CV_16S: 	r = "16S";break;
-		case CV_32S: 	r = "32S";break;
-		case CV_32F: 	r = "32F";break;
-		case CV_64F: 	r = "64F";break;
-		default: 		r = "User";break; 
+		case CV_8U: 	
+			r = "8U";
+			break;
+		case CV_8S: 	
+			r = "8S";
+			break;
+		case CV_16U: 	
+			r = "16U";
+			break;
+		case CV_16S: 	
+			r = "16S";
+			break;
+		case CV_32S: 	
+			r = "32S";
+			break;
+		case CV_32F: 	
+			r = "32F";
+			break;
+		case CV_64F: 	
+			r = "64F";
+			break;
+		default: 		
+			r = "User";
+			break; 
 	}	
 	r += "C";
 	r +=  (chans + '0');
 
-	return r; 
+	return r;
+
 }
 
 void 	callBckFmt(int, void*)
@@ -60,11 +77,21 @@ void 	callBckFmt(int, void*)
 void 	callBckConvMode(int, void*)
 {	
 	switch (conv) {
-		case 0: 		codeColor = cv::COLOR_BGR2YUV;std::cout << "color space: YUV" << std::endl; break;
-		case 1: 		codeColor = cv::COLOR_BGR2HSV;std::cout << "color space: HSV" << std::endl; break;
-		case 2: 		codeColor = cv::COLOR_BGR2HLS;std::cout << "color space: HLS" << std::endl; break;
-		case 3: 		codeColor = cv::COLOR_BGR2YCrCb;std::cout << "color space: YCrCb" << std::endl; break;
-		default: 		codeColor = cv::COLOR_BGR2HSV;std::cout << "color space: HSV" << std::endl;break; 
+		case 0: 		
+			codeColor = cv::COLOR_BGR2YUV;std::cout << "color space: YUV" << std::endl; 
+			break;
+		case 1: 		
+			codeColor = cv::COLOR_BGR2HSV;std::cout << "color space: HSV" << std::endl; 
+			break;
+		case 2: 		
+			codeColor = cv::COLOR_BGR2HLS;std::cout << "color space: HLS" << std::endl; 
+			break;
+		case 3: 		
+			codeColor = cv::COLOR_BGR2YCrCb;std::cout << "color space: YCrCb" << std::endl; 
+			break;
+		default: 		
+			codeColor = cv::COLOR_BGR2HSV;std::cout << "color space: HSV" << std::endl;
+			break; 
 	}
 }	
 
@@ -141,7 +168,9 @@ bool 	getROI(cv::Mat img, std::vector<cv::Point2f> &ptvec) {
 			trapezoidPts.push_back(cv::Point2f(xyzi.at<double>(0,0), xyzi.at<double>(0,1)));
 		}
 	}
+
 	return ref;
+
 }
 
 int     main(int ac, char **av)
@@ -507,7 +536,9 @@ int     main(int ac, char **av)
 			cv::waitKey(1);
 		}
 	}
+
 	return (EXIT_SUCCESS);
+
 }
 
 
